@@ -17,8 +17,7 @@ st.set_page_config(page_title="", page_icon="👋", layout="wide")
 
 with st.sidebar:
     coffee_button(username="timho102003", floating=False, width=221)
-    is_signout = st.button("Sign Out")
-    if is_signout:
+    if is_signout := st.button("Sign Out"):
         if not st.session_state.get("is_auth_user", False):
             st.warning("Please login first to sign out")
         else:

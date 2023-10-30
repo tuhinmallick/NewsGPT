@@ -88,10 +88,7 @@ def check_is_sign_up(username=""):
         st.session_state["firestore_db"].collection("authentication").document(username)
     )
     user_meta = user_ref.get()
-    if user_meta.exists:
-        return True
-    else:
-        return False
+    return bool(user_meta.exists)
 
 def sign_up(username, password, lastname, firstname, favorite, collection="authentication"):
     signup_info = ""
@@ -113,9 +110,7 @@ def sign_up(username, password, lastname, firstname, favorite, collection="authe
         }
         doc_ref.set(signup_info)
         is_signup = True
-        signup_info = "Successfully Sign Up! Welcome {} {} to NewsGPT".format(
-            firstname.capitalize(), lastname.capitalize()
-        )
+        signup_info = f"Successfully Sign Up! Welcome {firstname.capitalize()} {lastname.capitalize()} to NewsGPT"
     except Exception as e:
         signup_info = f"Fail to sign up: {e}"
 
@@ -211,11 +206,11 @@ def recommendation(key, positive, daterange, limit, thresh, negative=[], search_
         }
         params = {"dr": daterange, "l": int(limit * 1.5), "t": thresh}
         data = json.dumps(data)
-        response = requests.post(
-                        f"{os.environ['QDRANT_LAMBDA_ENTRYPOINT']}/api/v1/recommend",
-                        params=params,
-                        data=data
-                    )
+        return requests.post(
+            f"{os.environ['QDRANT_LAMBDA_ENTRYPOINT']}/api/v1/recommend",
+            params=params,
+            data=data,
+        )
     elif key == "search":
         params = {"q": search_msg, "l": limit, "t": thresh, "dr": daterange}
 
@@ -225,7 +220,7 @@ def recommendation(key, positive, daterange, limit, thresh, negative=[], search_
         }
         # Convert to JSON
         data = json.dumps(data)
-        response = requests.post(
+        return requests.post(
             f"{os.environ['QDRANT_LAMBDA_ENTRYPOINT']}/api/v1/search",
             params=params,
             data=data,
@@ -236,11 +231,10 @@ def recommendation(key, positive, daterange, limit, thresh, negative=[], search_
                     "dr": int(daterange),
                     "l": limit,
                 }
-        response = requests.post(
-                        f"{os.environ['QDRANT_LAMBDA_ENTRYPOINT']}/api/v1/scroll",
-                        params=params,
-                    )
-    return response
+        return requests.post(
+            f"{os.environ['QDRANT_LAMBDA_ENTRYPOINT']}/api/v1/scroll",
+            params=params,
+        )
 
 #TODO: Sort articles by the date
 @st.cache_data(ttl=300)
@@ -256,17 +250,14 @@ def fetch_feeds(total_articles=12, data_range=14, thresh=0.1, mode="feed", searc
         user_meta = st.session_state["user_ref"].get()
         user_meta = user_meta.to_dict()
         st.session_state["user_favorite"] = user_meta["favorite"]    
-        
+
         positive, negative, activities = user_meta.get("positive", []), user_meta.get("negative", []), user_meta.get("activities", [])
         numAct, numPos, numNeg = len(activities), len(positive), len(negative)
-        
+
         if numAct < 10:
             states.append(st.session_state["user_favorite"])
-        else:
-            if numAct:
-                states += ["activities"]
-            # if numPos:
-            #     states += ["positive"]
+        elif numAct:
+            states += ["activities"]
     elif mode in NEWS_CATEGORIES:
         states.append([mode.lower()])
     elif mode.lower() == "search":
@@ -301,8 +292,8 @@ def fetch_feeds(total_articles=12, data_range=14, thresh=0.1, mode="feed", searc
         else:
             print(response.text)
     # print("Unpack: {}".format(time.time()-start))
-    
-    final_articles, unique_id = list(), set()
+
+    final_articles, unique_id = [], set()
     start = time.time()
     for art in tmp_articles:
         if isinstance(art, str):
@@ -317,8 +308,7 @@ def fetch_feeds(total_articles=12, data_range=14, thresh=0.1, mode="feed", searc
         if cur_id not in unique_id:
             unique_id.add(cur_id)
             final_articles.append(art)
-    final_articles = sorted(final_articles, key=lambda x: x["payload"]['date'], reverse=True)
-    return final_articles
+    return sorted(final_articles, key=lambda x: x["payload"]['date'], reverse=True)
 
 def generate_feed_layout():
     # Add CSS for rounded corners
@@ -419,8 +409,7 @@ def update_activities(
     else:
         st.session_state["user_ref"].update({"readtime": ArrayUnion([new["readtime"]])})
     save_time = ori_rt - new["readtime"]
-    if save_time <= 0:
-        save_time = 0
+    save_time = max(save_time, 0)
     if "save_time" not in user_meta:
         cur_data = {"save_time": [save_time]}
         st.session_state["user_ref"].set(cur_data, merge=True)
@@ -470,16 +459,15 @@ def update_negatives(title, id, category, ner_loc, ner_org, ner_per):
         st.session_state["user_ref"].update({"negative": ArrayUnion([new])})
 
 def generate_anno_text(text_list, label, color="#8ef", border="1px dashed red"):
-    annos = []
-    for txt in text_list:
-        annos.append(
-            annotation(
-                txt.replace(" ##", "").replace("##", ""),
-                label,
-                color=color,
-                border="1px dashed red",
-            )
+    annos = [
+        annotation(
+            txt.replace(" ##", "").replace("##", ""),
+            label,
+            color=color,
+            border="1px dashed red",
         )
+        for txt in text_list
+    ]
     return annotated_text(*annos)
 
 def second_to_text(duration=0, simplify=False):
@@ -498,7 +486,7 @@ def second_to_text(duration=0, simplify=False):
             .replace("secs", "s")
             .replace("sec", "s")
         )
-    return result if not result == "" else "0 secs"
+    return result if result != "" else "0 secs"
 
 # TODO: Save article features
 # TODO: Handle the multiple click of thumbs up and down
@@ -523,7 +511,7 @@ def summary_layout_template(
     difference = diff[1:].split("- ")
     reading_time = readtime.of_text(summary + " ".join(similarity + difference)).seconds
     with col2:
-        go_back_to_feed = st.button(
+        if go_back_to_feed := st.button(
             "Back To Feed",
             on_click=update_activities,
             kwargs={
@@ -536,8 +524,7 @@ def summary_layout_template(
                 "ner_org": ner_org,
                 "ner_per": ner_per,
             },
-        )
-        if go_back_to_feed:
+        ):
             st.session_state["page_name"] = "feed"
             switch_page("home")
 
@@ -666,10 +653,7 @@ def summary_layout_template(
                 )
 
             if not_like:
-                st.toast(
-                    f"We will make the recommendation better for you. Trust us!",
-                    icon="👎",
-                )
+                st.toast("We will make the recommendation better for you. Trust us!", icon="👎")
 
             st.markdown(
                 f"<div class='similarity-heading'>Similarity:</div><div class='content'><ul><li>{'</li><li>'.join(similarity)}</li></ul></div>",

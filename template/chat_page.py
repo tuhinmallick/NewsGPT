@@ -176,7 +176,7 @@ def chat_template():
         st.toast(f"Thanks for liking the summary and article: {title}", icon="👍")
 
     if not_like:
-        st.toast(f"We will make the recommendation better for you. Trust us!", icon="👎")
+        st.toast("We will make the recommendation better for you. Trust us!", icon="👎")
 
     prompt = st.chat_input("Ask me any question about the news")
     if st.session_state.initial_prompt:
