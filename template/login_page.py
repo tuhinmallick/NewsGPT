@@ -31,38 +31,37 @@ def login_template():
                 placeholder="password",
                 type="password",
             )
-            submitted = st.form_submit_button("LOGIN", use_container_width=True)
-            if submitted and password and username:
-                password_entered(username=username, password=password)
-                if not st.session_state["password_correct"]:
-                    st.error("😕 User not known or password incorrect")
+            if submitted := st.form_submit_button(
+                "LOGIN", use_container_width=True
+            ):
+                if password and username:
+                    password_entered(username=username, password=password)
+                    if not st.session_state["password_correct"]:
+                        st.error("😕 User not known or password incorrect")
+                    else:
+                        st.success(f'Hi {st.session_state["realname"]} 👋, Welcome to NewsGPT')
+                        sleep(1)
+                        st.session_state["page_name"] = "feed"
+                        switch_page("home")
                 else:
-                    st.success(
-                        "Hi {} 👋, Welcome to NewsGPT".format(
-                            st.session_state["realname"]
-                        )
-                    )
-                    sleep(1)
-                    st.session_state["page_name"] = "feed"
+                    st.warning("Please enter the username and password before you click login buttom")
+                    sleep(1.5)
+                    st.session_state["page_name"] = "login"
                     switch_page("home")
-            elif submitted:
-                st.warning("Please enter the username and password before you click login buttom")
-                sleep(1.5)
-                st.session_state["page_name"] = "login"
-                switch_page("home")
-        # google_signin = st.button("Sign In with Google", use_container_width=True)
-        issignup = st.button("SIGN UP", type="secondary", use_container_width=True)
-        if issignup:
+        if issignup := st.button(
+            "SIGN UP", type="secondary", use_container_width=True
+        ):
             st.session_state["page_name"] = "signup"
             switch_page("home")
-        guest_login = st.button("Guest Login", type="secondary", use_container_width=True)
-        if guest_login:
+        if guest_login := st.button(
+            "Guest Login", type="secondary", use_container_width=True
+        ):
             password_entered(username="", password="", guest=True)
             st.warning("Personlization and time saving monitor will be disabled with guest login")
             sleep(2)
             st.session_state["page_name"] = "feed"
             switch_page("home")
-        
+
         st.image("assets/neotice_logo.png")
         st.success("🎉🎊📣 Happy to to announce that the beta version of our NewsGPT - **Neotice** app is now available for users to try out!")
         st.link_button("👉 Check out the app: Neotice !!", url="https://www.neotice.app")
@@ -113,9 +112,7 @@ def signup_template():
                     "business",
                 ],
             )
-            submitted = st.form_submit_button("SIGN UP")
-
-            if submitted:
+            if submitted := st.form_submit_button("SIGN UP"):
                 st.session_state["page_name"] = "login"
                 if not check_is_sign_up(username=username):
                     if not username or not password:
